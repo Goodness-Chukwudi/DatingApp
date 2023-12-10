@@ -1,47 +1,50 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using API.DTOs;
 using API.Entities;
 using API.Interfaces;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 {
     public class UsersController : BaseApiController
     {
         private readonly IUserRepository _userRepository;
-        public UsersController(IUserRepository userRepository)
+        private readonly IMapper _mapper;
+        public UsersController(IUserRepository userRepository, IMapper mapper)
         {
+            _mapper = mapper;
             _userRepository = userRepository;
         }
 
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AppUser>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<MemberDTO>>> GetUsers()
         {
-            var users = await _userRepository.GetUsersAsync();
+            IEnumerable<MemberDTO> users = await _userRepository.GetMembersAsync();
  
             return Ok(users);
         }
 
         [Authorize]
         [HttpGet("{id}")]
-        public async Task<ActionResult<AppUser>> GetUserById(int id)
+        public async Task<ActionResult<MemberDTO>> GetUserById(int id)
         {
             var user = await _userRepository.GetUserByIdAsync(id);
             if (user == null) return NotFound("User with this id doesn't exist");
+            MemberDTO member = _mapper.Map<MemberDTO>(user);
  
-            return user;
+            return member;
         }
 
         [Authorize]
         [HttpGet("find/{username}")]
-        public async Task<ActionResult<AppUser>> GetUserByUsername(string username)
+        public async Task<ActionResult<MemberDTO>> GetUserByUsername(string username)
         {
-            var user = await _userRepository.GetUserByUsernameAsync(username);
-            if (user == null) return NotFound("User with this username doesn't exist");
- 
+            MemberDTO user = await _userRepository.GetMemberByUsernameAsync(username);
+            if (user == null) return NotFound("User with this username doesn't exist"); 
             return user;
         }
 
