@@ -47,9 +47,11 @@ namespace API.Controllers
         public async Task<ActionResult<LoginResponseDTO>> Login(LoginDTO loginData)
         {
             AppUser user = await _context.Users.SingleOrDefaultAsync(user => user.UserName == loginData.Username);
-            using HMACSHA512 hmac = new HMACSHA512(user.PasswordSalt);
+            if (user == null) return BadRequest("Invalid username or password");
 
+            using HMACSHA512 hmac = new HMACSHA512(user.PasswordSalt);
             byte[] computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginData.Password));
+
             for (int i = 0; i < computedHash.Length; i++)
             {
                 if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid password or email");
