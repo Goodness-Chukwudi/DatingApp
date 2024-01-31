@@ -23,7 +23,9 @@ namespace API.extensions
             services.AddScoped<IPhotoService, PhotoService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IUserRepository, UserRepository>();
-            services.AddDbContext<DataContext>(options => {
+            services.AddScoped<LogUserActivity>();
+            services.AddDbContext<DataContext>(options =>
+            {
                 var connectionString = config.GetConnectionString("DefaultConnection");
                 options.UseSqlite(connectionString);
             });
