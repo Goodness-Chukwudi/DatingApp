@@ -24,6 +24,7 @@ namespace API.extensions
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<LogUserActivity>();
+            services.AddScoped<ILikesRepository, LikesRepository>();
             services.AddDbContext<DataContext>(options =>
             {
                 var connectionString = config.GetConnectionString("DefaultConnection");
