@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using API.Helpers;
 using API.Interfaces;
@@ -33,7 +30,7 @@ namespace API.Services
         {
             ImageUploadResult result = new ImageUploadResult();
 
-            if(file.Length > 0)
+            if (file.Length > 0)
             {
                 using Stream stream = file.OpenReadStream();
                 ImageUploadParams uploadParams = new ImageUploadParams
