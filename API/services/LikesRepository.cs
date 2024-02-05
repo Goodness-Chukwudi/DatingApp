@@ -6,6 +6,7 @@ using API.Data;
 using API.DTOs;
 using API.Entities;
 using API.Extensions;
+using API.Helpers;
 using API.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,24 +25,24 @@ namespace API.Services
             return await _context.Likes.FindAsync(sourceUserId, likedUserId);
         }
 
-        public async Task<IEnumerable<LikeDTO>> GetUserLikes(string predicate, int userId)
+        public async Task<PagedList<LikeDTO>> GetUserLikes(LikesParams likesParams)
         {
             IQueryable<AppUser> userQuery = _context.Users.OrderBy(u => u.UserName).AsQueryable();
             IQueryable<UserLike> likeQuery = _context.Likes.AsQueryable();
 
-            if (predicate == "liked")
+            if (likesParams.Predicate == "liked")
             {
-                likeQuery = likeQuery.Where(l => l.SourceUserId == userId);
+                likeQuery = likeQuery.Where(l => l.SourceUserId == likesParams.UserId);
                 userQuery = likeQuery.Select(l => l.LikedUser);
             }
 
-            if (predicate == "likedBy")
+            if (likesParams.Predicate == "likedBy")
             {
-                likeQuery = likeQuery.Where(l => l.LikedUserId == userId);
+                likeQuery = likeQuery.Where(l => l.LikedUserId == likesParams.UserId);
                 userQuery = likeQuery.Select(l => l.SourceUser);
             }
 
-            List<LikeDTO> likes = await userQuery.Select(u => new LikeDTO
+            IQueryable<LikeDTO> likes = userQuery.Select(u => new LikeDTO
             {
                 Id = u.Id,
                 Username = u.UserName,
@@ -49,9 +50,9 @@ namespace API.Services
                 NickName = u.NickName,
                 PhotoUrl = u.Photos.FirstOrDefault(p => p.IsMain).Url,
                 City = u.City
-            }).ToListAsync();
+            });
 
-            return likes;
+            return await PagedList<LikeDTO>.CreateAsync(likes, likesParams.PageNumber, likesParams.PageSize);
         }
 
         public async Task<AppUser> GetUserWithLikes(int userId)
