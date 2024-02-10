@@ -1,4 +1,5 @@
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using API.DTOs;
@@ -77,16 +78,12 @@ namespace API.Controllers
         public async Task<ActionResult> DeleteMessage(int id)
         {
             var currentUsername = User.GetUsername();
-
             var message = await _messageRepository.GetMessage(id);
-
-            if (message.Sender.UserName != currentUsername && message.Receiver.UserName != currentUsername)
+            if (message.SenderUsername != currentUsername && message.ReceiverUsername != currentUsername)
                 return Unauthorized();
-
-            if (message.Sender.UserName == currentUsername) message.SenderDeleted = true;
-            if (message.Receiver.UserName == currentUsername) message.ReceiverDeleted = true;
+            if (message.SenderUsername == currentUsername) message.SenderDeleted = true;
+            if (message.ReceiverUsername == currentUsername) message.ReceiverDeleted = true;
             if (message.SenderDeleted && message.ReceiverDeleted) _messageRepository.DeleteMessage(message);
-
             if (await _messageRepository.SaveAll()) return Ok();
 
             return BadRequest("Error deleting message");
