@@ -1,4 +1,5 @@
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using API.Helpers;
 using API.Interfaces;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.Services
 {
@@ -37,9 +39,31 @@ namespace API.Services
             return await _context.Messages.FindAsync(id);
         }
 
-        public Task<IEnumerable<MessageDTO>> GetMessageThread(int currentUserId, int receiverId)
+        public async Task<IEnumerable<MessageDTO>> GetMessageThread(string currentUsername, string otherUsername)
         {
-            throw new System.NotImplementedException();
+            var messages = await _context.Messages
+                .Include(m => m.Sender)
+                .ThenInclude(p => p.Photos)
+                .Where(m => m.Receiver.UserName == currentUsername
+                    && m.ReceiverDeleted == false
+                    && m.Sender.UserName == otherUsername
+                    || m.Receiver.UserName == otherUsername
+                    && m.Sender.UserName == currentUsername
+                    && m.SenderDeleted == false)
+                .OrderBy(m => m.DateSent)
+                .ToListAsync();
+
+            var unReadMessages = messages.Where(m => m.DateRead == null && m.Receiver.UserName == currentUsername).ToList();
+            if (unReadMessages.Count() > 0)
+            {
+                foreach (var message in unReadMessages)
+                {
+                    message.DateRead = DateTime.Now;
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return _mapper.Map<IEnumerable<MessageDTO>>(messages);
         }
 
         public async Task<PagedList<MessageDTO>> GetUserMessages(MessageParam messageParam)
@@ -50,10 +74,23 @@ namespace API.Services
 
             messageQuery = messageParam.Container switch
             {
-                "Inbox" => messageQuery.Where(m => m.Receiver.UserName == messageParam.Username),
+                "Inbox" => messageQuery.Where(m => m.Receiver.UserName == messageParam.Username && m.ReceiverDeleted == false),
                 "Outbox" => messageQuery.Where(m => m.Sender.UserName == messageParam.Username),
                 _ => messageQuery.Where(m => m.Receiver.UserName == messageParam.Username && m.DateRead == null)
             };
+
+            var unReadMessages = await messageQuery
+                .Where(m => m.DateRead == null && m.Receiver.UserName == messageParam.Username)
+                .ToListAsync();
+
+            if (unReadMessages.Count() > 0)
+            {
+                foreach (var message in unReadMessages)
+                {
+                    message.DateRead = DateTime.Now;
+                }
+                await _context.SaveChangesAsync();
+            }
 
             IQueryable<MessageDTO> messages = messageQuery.ProjectTo<MessageDTO>(_mapper.ConfigurationProvider);
 
