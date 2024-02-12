@@ -30,12 +30,9 @@ namespace API.Controllers
         {
             Console.WriteLine("HEre");
             if (await UserExist(registrationData.Username)) return BadRequest("A user with this username already exist");
-            using var hmac = new HMACSHA512();
-            AppUser appUser = _mapper.Map<AppUser>(registrationData);
 
+            AppUser appUser = _mapper.Map<AppUser>(registrationData);
             appUser.UserName = registrationData.Username.ToLower();
-            appUser.PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registrationData.Password));
-            appUser.PasswordSalt = hmac.Key;
 
             _context.Users.Add(appUser);
             await _context.SaveChangesAsync();
@@ -54,14 +51,6 @@ namespace API.Controllers
         {
             AppUser user = await _context.Users.SingleOrDefaultAsync(user => user.UserName == loginData.Username);
             if (user == null) return BadRequest("Invalid username or password");
-
-            using HMACSHA512 hmac = new HMACSHA512(user.PasswordSalt);
-            byte[] computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginData.Password));
-
-            for (int i = 0; i < computedHash.Length; i++)
-            {
-                if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid password or email");
-            }
 
             return new UserDTO
             {
