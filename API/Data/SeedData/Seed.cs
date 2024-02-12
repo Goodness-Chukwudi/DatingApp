@@ -47,9 +47,8 @@ namespace API.Data
                 Country = "Nigeria",
                 NickName = "Akpaaja"
             };
-            await userManager.CreateAsync(admin);
+            await userManager.CreateAsync(admin, "Pa$$w0rd");
             await userManager.AddToRolesAsync(admin, new[] { "Admin", "Moderator" });
-
         }
     }
 }
