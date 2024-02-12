@@ -1,8 +1,10 @@
 using System;
 using API.Data;
+using API.Entities;
 using API.Exceptions;
 using API.extensions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,8 +38,9 @@ if (app.Environment.IsDevelopment())
     try
     {
         var context = services.GetRequiredService<DataContext>();
+        var userManager = services.GetRequiredService<UserManager<AppUser>>();
         await context.Database.MigrateAsync();
-        await Seed.SeedUsers(context);
+        await Seed.SeedUsers(userManager);
     }
     catch (Exception e)
     {
