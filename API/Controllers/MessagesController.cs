@@ -1,5 +1,4 @@
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using API.DTOs;
@@ -16,22 +15,20 @@ namespace API.Controllers
     [Authorize]
     public class MessagesController : BaseApiController
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IMessageRepository _messageRepository;
         private readonly IMapper _mapper;
-        public MessagesController(IUserRepository userRepository, IMessageRepository messageRepository, IMapper mapper)
+        private readonly IUnitOfWork _unitOfWork;
+        public MessagesController(IUnitOfWork unitOfWork, IMapper mapper)
         {
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _messageRepository = messageRepository;
-            _userRepository = userRepository;
         }
 
         [HttpPost]
         public async Task<ActionResult<MessageDTO>> CreateMessage(CreateMessageDTO createMessageDTO)
         {
             int userId = User.GetUserId();
-            AppUser sender = await _userRepository.GetUserByIdAsync(userId);
-            AppUser receiver = await _userRepository.GetUserByUsernameAsync(createMessageDTO.ReceiverUsername);
+            AppUser sender = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
+            AppUser receiver = await _unitOfWork.UserRepository.GetUserByUsernameAsync(createMessageDTO.ReceiverUsername);
 
             if (receiver == null) return NotFound("Receiver not found");
 
@@ -44,9 +41,9 @@ namespace API.Controllers
                 Content = createMessageDTO.Content
             };
 
-            _messageRepository.AddMessage(message);
+            _unitOfWork.MessageRepository.AddMessage(message);
 
-            if (await _messageRepository.SaveAll())
+            if (await _unitOfWork.Save())
             {
                 MessageDTO newMessage = _mapper.Map<MessageDTO>(message);
                 return newMessage;
@@ -59,7 +56,7 @@ namespace API.Controllers
         public async Task<ActionResult<IEnumerable<MessageDTO>>> GetMessages([FromQuery] MessageParam messageParam)
         {
             messageParam.Username = User.GetUsername();
-            PagedList<MessageDTO> messages = await _messageRepository.GetUserMessages(messageParam);
+            PagedList<MessageDTO> messages = await _unitOfWork.MessageRepository.GetUserMessages(messageParam);
 
             Response.AddPaginationHeader(messages.CurrentPage, messages.PageSize, messages.TotalCount, messages.TotalPages);
 
@@ -70,7 +67,7 @@ namespace API.Controllers
         public async Task<ActionResult<IEnumerable<MessageDTO>>> GetMessageThread(string username)
         {
             string currentUsername = User.GetUsername();
-            IEnumerable<MessageDTO> messages = await _messageRepository.GetMessageThread(currentUsername, username);
+            IEnumerable<MessageDTO> messages = await _unitOfWork.MessageRepository.GetMessageThread(currentUsername, username);
             return Ok(messages);
         }
 
@@ -78,13 +75,13 @@ namespace API.Controllers
         public async Task<ActionResult> DeleteMessage(int id)
         {
             var currentUsername = User.GetUsername();
-            var message = await _messageRepository.GetMessage(id);
+            var message = await _unitOfWork.MessageRepository.GetMessage(id);
             if (message.SenderUsername != currentUsername && message.ReceiverUsername != currentUsername)
                 return Unauthorized();
             if (message.SenderUsername == currentUsername) message.SenderDeleted = true;
             if (message.ReceiverUsername == currentUsername) message.ReceiverDeleted = true;
-            if (message.SenderDeleted && message.ReceiverDeleted) _messageRepository.DeleteMessage(message);
-            if (await _messageRepository.SaveAll()) return Ok();
+            if (message.SenderDeleted && message.ReceiverDeleted) _unitOfWork.MessageRepository.DeleteMessage(message);
+            if (await _unitOfWork.Save()) return Ok();
 
             return BadRequest("Error deleting message");
         }
