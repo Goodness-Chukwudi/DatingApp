@@ -4,6 +4,7 @@ using API.interfaces;
 using API.Interfaces;
 using API.services;
 using API.Services;
+using API.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ namespace API.extensions
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<LogUserActivity>();
+            services.AddSingleton<PresenceTracker>();
             services.AddDbContext<DataContext>(options =>
             {
                 var connectionString = config.GetConnectionString("DefaultConnection");
