@@ -21,14 +21,19 @@ namespace API.SignalR
             string username = Context.User.GetUsername();
             await _tracker.HandleConnection(username, Context.ConnectionId);
             await Clients.Others.SendAsync("UserOnline", username);
+
             var onlineUsers = await _tracker.GetOnlineUsers();
             await Clients.All.SendAsync("OnlineUsers", onlineUsers);
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
+            string username = Context.User.GetUsername();
+            await Clients.Others.SendAsync("UserOffline", username);
 
-            await Clients.Others.SendAsync("UserOffline", Context.User.GetUsername());
+            var onlineUsers = await _tracker.GetOnlineUsers();
+            await Clients.All.SendAsync("OnlineUsers", onlineUsers);
+
             await base.OnDisconnectedAsync(exception);
         }
     }
