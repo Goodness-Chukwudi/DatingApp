@@ -29,6 +29,7 @@ namespace API.Controllers
         [HttpGet]
         public async Task<ActionResult<PagedList<MemberDTO>>> GetUsers([FromQuery] UserParams userParams)
         {
+
             var gender = await _unitOfWork.UserRepository.GetUserGender(User.GetUsername());
             userParams.CurrentUsername = User.GetUsername();
             if (string.IsNullOrEmpty(userParams.Gender)) userParams.Gender = gender == "male" ? "female" : "male";
@@ -49,11 +50,12 @@ namespace API.Controllers
             return member;
         }
 
+
         [HttpGet("me/details")]
         public async Task<ActionResult<MemberDTO>> GetLoggedInUser()
         {
             string username = User.GetUsername();
-            MemberDTO member = await _unitOfWork.UserRepository.GetMemberByUsernameAsync(username);
+            MemberDTO member = await _unitOfWork.UserRepository.GetMemberByUsernameAsync(username, true);
             if (member == null) return NotFound("Not found");
             return member;
         }
@@ -99,7 +101,6 @@ namespace API.Controllers
                 PublicId = result.PublicId
             };
 
-            if (user.Photos.Count == 0) photo.IsMain = true;
             user.Photos.Add(photo);
 
             if (await _unitOfWork.Save())
@@ -122,6 +123,7 @@ namespace API.Controllers
             if (photo == null) return NotFound("Photo not found");
 
             if (photo.IsMain) return BadRequest("This is already your main photo");
+            if (!photo.IsApproved) return BadRequest("This photo is not yet approved");
 
             Photo currentMainPhoto = user.Photos.FirstOrDefault(x => x.IsMain);
             if (currentMainPhoto != null) currentMainPhoto.IsMain = false;

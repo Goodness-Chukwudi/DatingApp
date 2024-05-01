@@ -23,8 +23,17 @@ namespace API.Services
             _context = context;
         }
 
-        public async Task<MemberDTO> GetMemberByUsernameAsync(string username)
+        public async Task<MemberDTO> GetMemberByUsernameAsync(string username, bool ignoreFilters = false)
         {
+            if (ignoreFilters)
+            {
+                return await _context.Users
+                    .Where(x => x.UserName == username)
+                    .ProjectTo<MemberDTO>(_mapper.ConfigurationProvider)
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync();
+            }
+
             return await _context.Users
                 .Where(x => x.UserName == username)
                 .ProjectTo<MemberDTO>(_mapper.ConfigurationProvider)
@@ -32,7 +41,7 @@ namespace API.Services
         }
         public async Task<PagedList<MemberDTO>> GetMembersAsync(UserParams userParams)
         {
-            IQueryable<AppUser> userQuery = _context.Users.AsQueryable();
+            var userQuery = _context.Users.AsQueryable();
             userQuery = userQuery.Where(u => u.UserName != userParams.CurrentUsername);
             userQuery = userQuery.Where(u => u.Gender == userParams.Gender);
 
@@ -46,9 +55,33 @@ namespace API.Services
                 _ => userQuery.OrderByDescending(u => u.LastActive)
             };
 
-            IQueryable<MemberDTO> query = userQuery.ProjectTo<MemberDTO>(_mapper.ConfigurationProvider).AsNoTracking();
+            var query = userQuery.ProjectTo<MemberDTO>(_mapper.ConfigurationProvider).AsNoTracking();
 
             return await PagedList<MemberDTO>.CreateAsync(query, userParams.PageNumber, userParams.PageSize);
+        }
+
+        public async Task<PagedList<UserPhotoDTO>> GetPhotosAsync(PhotoParams photoParams)
+        {
+            var photoQuery = _context.Photos.AsQueryable();
+
+            if (photoParams.Username != null) photoQuery = photoQuery.Where(p => p.appUser.UserName == photoParams.Username);
+
+            if (photoParams.IsApproved != null) photoQuery = photoQuery.Where(p => p.IsApproved == photoParams.IsApproved);
+
+            if (photoParams.IsMain != null) photoQuery = photoQuery.Where(p => p.IsMain == photoParams.IsMain);
+
+            photoQuery = photoParams.OrderBy switch
+            {
+                "username" => photoQuery.OrderBy(p => p.appUser.UserName),
+                _ => photoQuery.OrderByDescending(p => p.CreatedAt)
+            };
+
+            var query = photoQuery
+                .IgnoreQueryFilters()
+                .ProjectTo<UserPhotoDTO>(_mapper.ConfigurationProvider)
+                .AsNoTracking();
+
+            return await PagedList<UserPhotoDTO>.CreateAsync(query, photoParams.PageNumber, photoParams.PageSize);
         }
 
         public async Task<AppUser> GetUserByIdAsync(int id)
@@ -58,7 +91,9 @@ namespace API.Services
 
         public async Task<AppUser> GetUserByUsernameAsync(string username)
         {
-            return await _context.Users.Include(x => x.Photos).FirstOrDefaultAsync(x => x.UserName == username);
+            return await _context.Users.Include(x => x.Photos)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(x => x.UserName == username);
         }
 
         public async Task<string> GetUserGender(string username)
